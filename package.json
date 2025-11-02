@@ -4,9 +4,9 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "hex": "node extra && node cn && node name",
-    "pk": "node pack",
-    "hdi": "node hdi",
+    "hex": "node cn.js && node cn2.js && node name.js",
+    "pk": "node pack.js",
+    "hdi": "node hdi.js",
     "all": "npm run hex && npm run pk && npm run hdi"
   },
   "dependencies": {

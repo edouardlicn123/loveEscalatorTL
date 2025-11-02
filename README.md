@@ -9,5 +9,8 @@ npm run all
 3. 打包 `ear_cn` 目录下的文件为 `LOVE.EAR` 文件
 4. 将 `LOVE.EAR` 文件注入 `Love Escalator_CN.hdi`
 
+跑完没有报错，就可以打开 `Love Escalator_CN.hdi` 测试游戏了
+
+
 ## Note
 - table2.json 是对 table.json 的补充翻译，主要内容是选项，然后是一些自动播放的特殊文本（比如主角出车祸时回忆跟别人对话的情境）

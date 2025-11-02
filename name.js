@@ -95,5 +95,5 @@ function translateNames(refDir, destDir, filename) {
     })
 
     fs.writeFileSync(destFile, buffer)
-    console.log(`已翻译人名文件，保存文件 ${path.resolve(destFile)}`)
+    console.log(`已翻译人名文件，保存为 ${path.resolve(destFile)}`)
 }

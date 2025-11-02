@@ -4,17 +4,14 @@ const { 半角转全角, 中文转日区, replaceBuffer, hex2Num } = require('./
 const { REV_NAME_DICT, jp2RomCode } = require('./romCode2JP.js')
 
 const tableFile = 'table.json'
-const tableFile2 = 'table2.json'
 const refDir = 'ear_jp'
 const destDir = 'ear_cn'
-genCnFiles(tableFile, tableFile2, refDir, destDir)
+genCnFiles(tableFile, refDir, destDir)
 
-function genCnFiles(tableFile, tableFile2, refDir, destDir) {
+function genCnFiles(tableFile, refDir, destDir) {
     addCnHexColumn(tableFile, refDir)
     checkHexLength(tableFile)
     addCnFiles(tableFile, refDir, destDir)
-    // 补充 table2.json 的翻译
-    extraTranslate(tableFile2, destDir)
 }
 
 function addCnHexColumn(tableFile, refDir) {
@@ -200,31 +197,6 @@ function addCnFiles(tableFile, refDir, destDir) {
         }
         fs.writeFileSync(destFile, buffer)
     }
-    console.log(`已根据 ${tableFile} 汉化所有文件，保存目录 ${path.resolve(destDir)}`)
-}
-
-function extraTranslate(tableFile, destDir) {
-    const table2 = JSON.parse(fs.readFileSync(tableFile2))
-    const files = Object.keys(table2)
-    files.forEach(file => {
-        const destFile = path.join(destDir, file)
-        let buffer = fs.readFileSync(destFile)
-        const changes = table2[file]
-        for (const change of changes) {
-            const { addr, jpHex, cnHex } = change
-
-            if (!cnHex) {
-                continue // 如果 cnHex 留空，表示不修改
-            }
-
-            if (jpHex.length !== cnHex.length) {
-                throw `日文字节与中文字节长度不一致，file = ${file}, addr = ${addr}`
-            }
-            const cnBuffer = Buffer.from(cnHex.replaceAll(' ', ''), 'hex')
-            cnBuffer.copy(buffer, hex2Num(addr))
-        }
-        fs.writeFileSync(destFile, buffer)
-    })
     console.log(`已根据 ${tableFile} 汉化所有文件，保存目录 ${path.resolve(destDir)}`)
 }
 
