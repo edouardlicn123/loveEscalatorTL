@@ -23,14 +23,7 @@ function addCnHexColumn(tableFile) {
     for (const file of files) {
         const changes = table[file]
         for (const change of changes) {
-            let { addr, jpHex, cnHex, jp, cn, isFirstOption, 保留前2字节, 保留前4字节 } = change
-
-            // isFirstOption 为 true 时，检查 cnHex 中不应该有 00
-            if (isFirstOption) {
-                if (cnHex.includes('00')) {
-                    throw `作为第一个选项，不应出现 00 => ${cn}`
-                }
-            }
+            let { jpHex, cnHex, jp, cn, isFirstOption, 保留前2字节, 保留前4字节 } = change
 
             // 只有 jp 为 "" 的情况才需要解析 jp
             if (!jp) {
@@ -39,7 +32,6 @@ function addCnHexColumn(tableFile) {
                 change.jp = jp
             }
 
-            // 只有 cnHex 为 "" 的情况才需要更新 cnHex，这样我才能自定义 cnHex 而不被覆盖
             if (cn) {
                 cn = 半角转全角(cn)
                 cn = 中文转日区(cn)
@@ -67,8 +59,19 @@ function addCnHexColumn(tableFile) {
                 if (lenDiff < 0) {
                     throw `翻译的中文长度不应该大于日文: ${cn}`
                 } else {
-                    for (let i = 0; i < lenDiff; i++) {
-                        cnArr.push('00')
+                    if (isFirstOption) {
+                        const count = Math.floor(lenDiff / 2)
+                        const left = lenDiff % 2
+                        for (let i = 0; i < count; i++) {
+                            cnArr.push('01', '21')
+                        }
+                        if (left) {
+                            cnArr.push('00')
+                        }
+                    } else {
+                        for (let i = 0; i < lenDiff; i++) {
+                            cnArr.push('00')
+                        }
                     }
                 }
                 cnHex = cnArr.join(' ').toUpperCase()
@@ -76,6 +79,13 @@ function addCnHexColumn(tableFile) {
                     throw `中文 hex 和日文 hex 长度不同`
                 }
                 change.cnHex = cnHex
+
+                // isFirstOption 为 true 时，检查 cnHex 中不应该有 00
+                if (isFirstOption) {
+                    if (cnHex.includes('00')) {
+                        throw `作为第一个选项，不应出现 00 => ${cn}`
+                    }
+                }
             }
         }
         table[file] = table[file].sort((a, b) => hex2Num(a.addr) - hex2Num(b.addr))
