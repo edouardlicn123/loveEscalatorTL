@@ -56,7 +56,8 @@ function addCnHexColumn(tableFile, refDir) {
             }
 
             // 长度校正
-            const lenDiff = jpHexInnerArr.length - cnHexArr.length
+            const minusLen = item.minusLen || 0
+            const lenDiff = jpHexInnerArr.length - cnHexArr.length - minusLen
             if (Math.abs(lenDiff) % 2 === 1) {
                 console.log(`长度差为奇数: ${lenDiff} => ${jpName} ${jp} ${cn}`)
                 throw `长度差为奇数，无法删除或添加字节`
@@ -127,35 +128,57 @@ function checkHexLength(tableFile) {
                 cnLen += cnHex.split(' ').length
             })
             if (jpLen !== cnLen) {
+                console.log('============================================================================================================================')
                 console.log(`${file} 文件的第 ${groupIdx} 组组内长度不一致: 日文长度 ${jpLen} !== ${cnLen} 中文长度`)
                 isOK = false
                 // throw `组内长度不一致`
 
-                // 尝试修复这一组内的溢出文本
-                // group.forEach((obj, index) => {
-                //     const { item, jpHex, cnHex } = obj
-                //     if (item.溢出字节数) {
-                //         // 往下扫描找到第一个可以互补的元素，要求 padLen >= 溢出字节数，没有“固定中文字节”，从后往前删除 00 后，加上 “固定中文字节”，默认是一组的
-                //         // 有“固定中文字节”标记的 padLen 不可信，因为修改后没有同步
-                //         let fixItem = group.slice(index + 1).find(obj => (obj.item?.padLen || 0) >= item.溢出字节数 && !obj.item.固定中文字节)?.item
-                //         if (!fixItem) {
-                //             fixItem = group.slice(0, index).reverse().find(obj => (obj.item?.padLen || 0) >= item.溢出字节数 && !obj.item.固定中文字节)?.item
-                //         }
-                //         if (fixItem) {
-                //             const replaceZeros = Array(item.溢出字节数).fill('00').join(' ')
-                //             const replaceIdx = fixItem.cnHex.lastIndexOf(replaceZeros)
-                //             if (replaceIdx < 0) {
-                //                 throw `找不到 ${replaceZeros} 在 ${fixItem.cnHex} 中的位置`
-                //             } else {
-                //                 // console.log(item, firstFixItemAfter)
-                //                 // debugger
-                //                 fixItem.cnHex = fixItem.cnHex.slice(0, replaceIdx) + fixItem.cnHex.slice(replaceIdx + item["溢出字节数"] * 3)
-                //                 fixItem.固定中文字节 = true
-                //                 fixItem.删除字节数 = item.溢出字节数
-                //             }
-                //         }
-                //     }
-                // })
+                const diff = cnLen - jpLen
+                if (diff < 0) {
+                    throw `非预期情况，${file} 文件的第 ${groupIdx} 组组内中文长度 ${cnLen} < ${jpLen} 日文长度`
+                } else {
+                    // 累计这一组内的 padding 余量，如果大于等于 diff 则可以不改文本地修复，否则至少需要在组内删除 (diff - padding) / 2 向上取整个字
+                    let padding = 0
+                    group.forEach(({ item }) => {
+                        if (item?.padLen && !item.固定中文字节) {
+                            padding += item.padLen
+                        }
+                    })
+                    if (padding >= diff) {
+                        // 尝试通过修改或添加minusLen字段修复
+                        // 规则是，找出 group 里所有存在 padLen 且没有 固定中文字节 的字段的记录，尝试添加或修改 minusLen 字段
+                        let left = diff
+                        const canFixItems = group.filter(({ item }) => item.padLen && !item.固定中文字节)
+                        for (const { item } of canFixItems) {
+                            if (left === 0) break
+                            const pad = item.padLen
+                            if (pad <= left) {
+                                if (item.minusLen) {
+                                    item.minusLen += pad
+                                } else {
+                                    item.minusLen = pad
+                                }
+                                left -= pad
+                            } else {
+                                if (item.minusLen) {
+                                    item.minusLen += left
+                                } else {
+                                    item.minusLen = left
+                                }
+                                left = 0
+                            }
+                        }
+                        console.log(`${file} 内第${groupIdx}组超出${diff}字节，但padding为${padding}，已自动修复`)
+                    } else {
+                        // padding 不够，至少需要在组内删除一些中文文本本身
+                        const needDeleteChar = Math.ceil((diff - padding) / 2)
+                        console.log(`${file} 第${groupIdx}组超出${diff}字节，padding为${padding}，需在以下几句中删除至少${needDeleteChar}个中文字符`)
+                        group.forEach(({ item }) => {
+                            console.log(item.cn)
+                        })
+                    }
+
+                }
             } else {
                 group.forEach(({ item }) => {
                     delete item.溢出字节数
